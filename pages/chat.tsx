@@ -6,6 +6,7 @@ import styled from "styled-components"
 import AiChatContent from "../components/AiChatContent"
 import ChatContent from "../components/ChatContent"
 import UserList from "../components/UserList"
+import { getSocket } from "../network/socket"
 import { changeName } from "../store/store"
 import { routerBeforEach } from "../utils/router-beforEach"
 import type { PresenceMap } from "../utils/presence"
@@ -28,6 +29,22 @@ function Chat() {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [presenceMap, setPresenceMap] = useState<PresenceMap>({})
     const [sidebarWidth, setSidebarWidth] = useState(340)
+    const [unreadMap, setUnreadMap] = useState<Record<string, number>>({})
+    const [contactActivityMap, setContactActivityMap] = useState<Record<string, number>>({})
+    const [messageRefreshKey, setMessageRefreshKey] = useState(0)
+
+    const selectCurrentUser = useCallback((user: string) => {
+        setCurrentUser(prevUser => {
+            const nextUser = prevUser === user ? '' : user
+            if (nextUser && !isAiAssistant(nextUser)) {
+                setUnreadMap(prevUnreadMap => ({
+                    ...prevUnreadMap,
+                    [nextUser]: 0
+                }))
+            }
+            return nextUser
+        })
+    }, [])
 
     const startSidebarResize = useCallback((event: MouseEvent<HTMLDivElement>) => {
         event.preventDefault()
@@ -61,6 +78,41 @@ function Chat() {
         }
     }, [dispatch, router])
 
+    useEffect(() => {
+        if (!currentUsername) {
+            return
+        }
+
+        const socket = getSocket()
+        const handleIncomingMessage = (data?: { from?: string; to?: string }) => {
+            const from = data?.from
+            if (!from || from === currentUsername || (data?.to && data.to !== currentUsername)) {
+                return
+            }
+
+            setContactActivityMap(prevActivityMap => ({
+                ...prevActivityMap,
+                [from]: Date.now()
+            }))
+
+            if (from === currentUser) {
+                setMessageRefreshKey(prevKey => prevKey + 1)
+                return
+            }
+
+            setUnreadMap(prevUnreadMap => ({
+                ...prevUnreadMap,
+                [from]: (prevUnreadMap[from] || 0) + 1
+            }))
+        }
+
+        socket.on('showMessage', handleIncomingMessage)
+
+        return () => {
+            socket.off('showMessage', handleIncomingMessage)
+        }
+    }, [currentUser, currentUsername])
+
     return (
         <Container>
             <div className="background" />
@@ -73,10 +125,12 @@ function Chat() {
             <section className="chatScreen" style={{ gridTemplateColumns: `${sidebarWidth}px 6px minmax(0, 1fr)` }}>
                 <UserList
                     currentUser={currentUser}
-                    setCurrentUser={setCurrentUser}
+                    setCurrentUser={selectCurrentUser}
                     presenceMap={presenceMap}
                     setPresenceMap={setPresenceMap}
                     currentUsername={currentUsername}
+                    unreadMap={unreadMap}
+                    contactActivityMap={contactActivityMap}
                 />
                 <div className="sidebarResizeHandle" onMouseDown={startSidebarResize} />
                 {
@@ -95,6 +149,7 @@ function Chat() {
                             setIsloading={setIsloading}
                             currentUserStatus={presenceMap[currentUser] || 'offline'}
                             currentUsername={currentUsername}
+                            messageRefreshKey={messageRefreshKey}
                         />
                 }
             </section>

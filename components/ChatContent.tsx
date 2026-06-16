@@ -25,6 +25,7 @@ interface ChatContentProps {
   setIsloading: (loading: boolean) => void
   currentUserStatus: UserStatus
   currentUsername: string
+  messageRefreshKey: number
 }
 
 export default function ChatContent({
@@ -34,7 +35,8 @@ export default function ChatContent({
   isloading,
   setIsloading,
   currentUserStatus,
-  currentUsername
+  currentUsername,
+  messageRefreshKey
 }: ChatContentProps) {
   const input = useRef<HTMLTextAreaElement>(null)
   const chatScreen = useRef<HTMLDivElement>(null)
@@ -132,20 +134,7 @@ export default function ChatContent({
       setMessages([])
       setIsloading(false)
     }
-  }, [currentUser, currentUsername, loadMessages, setIsloading, setMessages])
-
-  useEffect(() => {
-    const socket = getSocket()
-    socket.on('showMessage', () => {
-      if (currentUser && currentUsername) {
-        loadMessages(1, 'replace')
-      }
-    })
-
-    return () => {
-      socket.off('showMessage')
-    }
-  }, [currentUser, currentUsername, loadMessages])
+  }, [currentUser, currentUsername, loadMessages, messageRefreshKey, setIsloading, setMessages])
 
   async function sendMessage() {
     const message = input.current?.value.trim() || ''
@@ -202,7 +191,8 @@ export default function ChatContent({
         }
       ])
       getSocket().emit('sendMessage', {
-        to: currentUser
+        to: currentUser,
+        from: currentUsername
       })
       if (input.current) {
         input.current.value = ''

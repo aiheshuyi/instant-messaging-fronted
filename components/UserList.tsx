@@ -19,6 +19,8 @@ interface UserListProps {
     presenceMap: PresenceMap
     setPresenceMap: (presenceMap: PresenceMap) => void
     currentUsername: string
+    unreadMap: Record<string, number>
+    contactActivityMap: Record<string, number>
 }
 
 const statusOrder: Record<UserStatus, number> = {
@@ -42,7 +44,9 @@ export default function UserList({
     setCurrentUser,
     presenceMap,
     setPresenceMap,
-    currentUsername
+    currentUsername,
+    unreadMap,
+    contactActivityMap
 }: UserListProps) {
     const router = useRouter()
     const [users, setUsers] = useState<ChatUser[]>([])
@@ -63,6 +67,18 @@ export default function UserList({
             ...users.filter(user => user.username !== currentUsername)
         ]
             .sort((a, b) => {
+                const unreadA = unreadMap[a.username] || 0
+                const unreadB = unreadMap[b.username] || 0
+                if (unreadA !== unreadB) {
+                    return unreadB - unreadA
+                }
+
+                const activityA = contactActivityMap[a.username] || 0
+                const activityB = contactActivityMap[b.username] || 0
+                if (activityA !== activityB) {
+                    return activityB - activityA
+                }
+
                 if (isAiAssistant(a.username)) {
                     return -1
                 }
@@ -74,7 +90,7 @@ export default function UserList({
                 const statusB = presenceMap[b.username] || 'offline'
                 return statusOrder[statusA] - statusOrder[statusB] || a.username.localeCompare(b.username)
             }),
-        [currentUsername, presenceMap, users]
+        [contactActivityMap, currentUsername, presenceMap, unreadMap, users]
     )
 
     const getUserList = useCallback(async () => {
@@ -214,10 +230,12 @@ export default function UserList({
                             const active = user.username === currentUser
                             const status = isAiAssistant(user.username) ? 'online' : presenceMap[user.username] || 'offline'
                             const statusMeta = getStatusMeta(status)
+                            const unreadCount = unreadMap[user.username] || 0
                             return (
                                 <button
                                     type="button"
                                     className={active ? 'userCard active' : 'userCard'}
+                                    data-unread-count={unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined}
                                     onClick={() => setCurrentUser(active ? '' : user.username)}
                                     key={user.username}
                                 >
@@ -466,7 +484,7 @@ const Container = styled.aside`
         width: 100%;
         min-height: 78px;
         display: grid;
-        grid-template-columns: 54px minmax(0, 1fr);
+        grid-template-columns: 54px minmax(0, 1fr) auto;
         align-items: center;
         gap: 12px;
         padding: 12px;
@@ -478,6 +496,23 @@ const Container = styled.aside`
         text-align: left;
         cursor: pointer;
         transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .userCard[data-unread-count]::after {
+        content: attr(data-unread-count);
+        min-width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 7px;
+        border-radius: 999px;
+        color: #ffffff;
+        background: #f04438;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        box-shadow: 0 8px 18px rgba(240, 68, 56, 0.24);
     }
 
     .userCard:hover,
