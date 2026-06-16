@@ -7,7 +7,6 @@ export function getSocket() {
     if (!socket) {
         socket = io(wsHOST, {
             autoConnect: true,
-            transports: ['websocket']
         })
     }
 

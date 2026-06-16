@@ -290,6 +290,12 @@ export default function AiChatContent({ currentUsername, currentUserStatus }: Ai
         })
       })
 
+      if (!response.ok) {
+        const errorText = await response.text()
+        updateAiReply(errorText || `AI request failed: HTTP ${response.status}`, true)
+        return
+      }
+
       if (!response.body) {
         updateAiReply('AI 回复失败，请稍后再试', true)
         return
@@ -334,6 +340,8 @@ export default function AiChatContent({ currentUsername, currentUserStatus }: Ai
           }
         }
       }
+    } catch (error) {
+      updateAiReply('AI request failed. Please check backend logs and DeepSeek API settings.', true)
     } finally {
       setSending(false)
     }
