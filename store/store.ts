@@ -1,4 +1,4 @@
-import { createSlice, configureStore } from '@reduxjs/toolkit'
+import { createSlice } from '@reduxjs/toolkit'
 
 export const usernameSlice = createSlice({
     name: 'username',
@@ -14,6 +14,5 @@ export const usernameSlice = createSlice({
 
 export const { changeName } = usernameSlice.actions
 export default usernameSlice.reducer
-
 
 
