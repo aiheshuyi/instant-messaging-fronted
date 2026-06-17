@@ -8,6 +8,7 @@ import { useRouter } from 'next/router';
 import { useState } from 'react';
 import { httpHost } from '../network';
 import { getSocket } from '../network/socket';
+import { getRandomPresetAvatar } from '../utils/avatarPresets';
 
 interface FormData {
   username: string,
@@ -33,7 +34,7 @@ const Home: NextPage = () => {
     return axios.post(`${httpHost}auth/register`, {
       username: values.username,
       password: values.password,
-      avatar: `https://api.multiavatar.com/Binx%${Math.floor((Math.random() * 50000))}.png`
+      avatar: getRandomPresetAvatar()
     })
   }
 
